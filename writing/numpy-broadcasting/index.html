@@ -1,0 +1,143 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Multidimensional Matrix Operations with Numpy Broadcasting</title>
+  <meta name="description" content="Computing a full Euclidean distance matrix without loops by broadcasting into the third dimension with numpy. By Michael Chein.">
+  <link rel="canonical" href="https://michaelchein.com/writing/numpy-broadcasting/">
+  <meta property="og:type" content="article">
+  <meta property="og:title" content="Performing multidimensional matrix operations using numpy's broadcasting">
+  <meta property="og:description" content="A Euclidean distance matrix in one line, by broadcasting into 3D.">
+  <meta property="og:url" content="https://michaelchein.com/writing/numpy-broadcasting/">
+  <meta property="og:image" content="https://michaelchein.com/writing/numpy-broadcasting/img/tensor.jpg">
+  <meta property="article:published_time" content="2019-02-12">
+  <meta name="author" content="Michael Chein">
+  <meta name="theme-color" content="#faf8f4">
+  <link rel="icon" href="/assets/img/favicon.svg" type="image/svg+xml">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Source+Serif+4:ital,opsz,wght@0,8..60,400..600;1,8..60,400..600&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.9/katex.min.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/atom-one-light.min.css">
+  <link rel="stylesheet" href="/assets/css/site.css">
+  <script defer src="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.9/katex.min.js"></script>
+  <script defer src="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.9/contrib/auto-render.min.js"></script>
+  <script defer src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+  <script defer src="/assets/js/article.js"></script>
+</head>
+<body>
+  <a class="skip-link" href="#main">Skip to content</a>
+
+  <header class="site-header">
+    <div class="wrap">
+      <a class="brand" href="/"><span class="brand-mark" aria-hidden="true">MC</span>Michael Chein</a>
+      <nav class="site-nav" aria-label="Main">
+        <a href="/portfolio/#experience">Experience</a>
+        <a href="/portfolio/#projects">Projects</a>
+        <a href="/portfolio/#posts">Posts</a>
+      </nav>
+    </div>
+  </header>
+
+  <main id="main">
+    <div class="wrap wrap--narrow">
+      <header class="article-head">
+        <a class="back-link" href="/portfolio/#posts">← Posts</a>
+        <h1>Performing multidimensional matrix operations using numpy's broadcasting</h1>
+        <div class="article-meta"><span>Michael Chein</span><span>February 12, 2019</span><span>4 min read</span></div>
+        <p class="origin-note">Originally published in <em>Towards Data Science</em>, 2019. <a href="https://medium.com/data-science/performing-multidimensional-matrix-operations-using-numpys-broadcasting-cf33e3029170">Read it on Medium</a>.</p>
+      </header>
+
+      <article class="article">
+        <figure class="wide no-bg">
+          <img src="img/tensor.jpg" width="1400" height="933" alt="Illustration of stacked tensors" loading="lazy">
+          <figcaption>Tensor manipulation…</figcaption>
+        </figure>
+
+        <p>Numpy's <a href="https://docs.scipy.org/doc/numpy-1.13.0/user/basics.broadcasting.html">broadcasting</a> feature can be somewhat confusing for new users of this library, but it allows for very clean, elegant and FUN coding, so it is definitely worth the effort of getting used to. In this short article, I wanted to show a nice application of broadcasting to save some for loops and even computation time.</p>
+        <p>Let's start with a simple case.</p>
+        <p>The basic concept is that when adding or multiplying two vectors of sizes <em>(m,1)</em> and <em>(1,m)</em>, numpy will broadcast (duplicate the vector) so that it allows the calculation. For example, multiplying a vector <em>[1,2,3,4,…10]</em> with a transposed version of itself will yield the multiplication table. For example:</p>
+        <figure>
+          <img src="img/multiplication-table.png" width="1781" height="681" alt="A (3,1) vector multiplied by its (1,3) transpose produces a 3 by 3 multiplication table" loading="lazy">
+          <figcaption>Broadcasting a vector into a matrix. A miniature multiplication table.</figcaption>
+        </figure>
+        <p>In this example, we multiply a one-dimensional vector (V) of size <em>(3,1)</em> and the transposed version of it, which is of size <em>(1,3)</em>, and get back a <em>(3,3)</em> matrix, which is the <a href="https://en.wikipedia.org/wiki/Outer_product">outer product</a> of V.</p>
+        <p>If you still find this confusing, the next illustration breaks down the process into 2 steps, making it clearer:</p>
+        <figure class="wide">
+          <img src="img/slow-motion.png" width="2048" height="609" alt="Both vectors are first duplicated into 3 by 3 matrices, then multiplied element-wise" loading="lazy">
+          <figcaption>Broadcasting in slow motion.</figcaption>
+        </figure>
+        <p>You can think of broadcasting as simply duplicating both our vectors into a <em>(3,3)</em> matrix, and then performing element-wise multiplication.</p>
+        <p>We have just broadcast a 1-dimensional array into a 2-dimensional matrix. However, we could use this to broadcast a 2-dimensional array (or matrix) into a 3-dimensional one (a tensor). Just imagine that you needed to perform V*V.T for multiple vectors of the same length. You could simply stack them together, and get all the results in one pass.</p>
+
+        <h2>Case study</h2>
+        <p>In this case, I am looking to generate a Euclidean distance matrix for the <a href="https://en.wikipedia.org/wiki/Iris_flower_data_set">iris data set</a>. The Euclidean equation is:</p>
+        <div class="math-block">\[ d(p, q) = \sqrt{\sum_{i}^{n} (q_i - p_i)^2} \]</div>
+        <p>Obtaining the table could obviously be performed using two nested for loops:</p>
+<pre><code class="language-python">result = []
+for i,_ in enumerate(data):
+    for j,_ in enumerate(data):
+        result[i,j] = np.sqrt(np.sum((data[i,:]-data[j,:])**2))</code></pre>
+        <p>However, it can also be performed using matrix operations (which are both about 100 times faster, and much cooler).</p>
+        <p>We take the data set (represented as 'A' in the illustration),</p>
+        <figure class="small">
+          <img src="img/a.png" width="323" height="506" alt="A tall rectangle labeled A, with m rows and n columns" loading="lazy">
+          <figcaption>A rectangle representing the iris data set, in which case m=150 and n=4.</figcaption>
+        </figure>
+        <p>create a 3D copy of it, and rotate it to the orientation shown as 'B' in the illustration.</p>
+        <figure class="small">
+          <img src="img/b.png" width="296" height="544" alt="The data set as a 3D slab labeled B, rotated" loading="lazy">
+          <figcaption>We can use numpy's rot90 function to rotate a matrix. See code below.</figcaption>
+        </figure>
+        <p>We then create another copy and rotate it as represented by 'C'.</p>
+        <figure>
+          <img src="img/c.png" width="556" height="252" alt="A second copy of the data set rotated flat, labeled C" loading="lazy">
+          <figcaption>Copy and rotate again.</figcaption>
+        </figure>
+        <p>B − C will generate (via broadcasting!) a 3D cube ('D'), sized <em>(m,m,n)</em>, which represents the calculation \((q_i - p_i)\) for each instance (<em>m</em>) and feature (<em>n</em>) of the original data set vectors (<em>n</em>=4 in the iris data set).</p>
+        <figure>
+          <img src="img/d.png" width="769" height="692" alt="A cube labeled D of size m by m by n, summed along the feature axis" loading="lazy">
+          <figcaption>Notice that we are summing up the features for all instances at once!</figcaption>
+        </figure>
+        <p>Then, we simply raise the entire cube to the power of 2, sum the result along the axis representing the features (see illustration above), and take the square root.</p>
+        <p>The result is the distance matrix ('E')!</p>
+        <figure>
+          <img src="img/e.png" width="515" height="508" alt="A square m by m matrix labeled E" loading="lazy">
+          <figcaption>This is the Euclidean distance matrix. It might seem like it only contains the letter 'E', but in fact it holds the distance between all instance pairs. Twice. The diagonal is the distance between every instance and itself, and if it's not equal to zero, then you should double-check your code…</figcaption>
+        </figure>
+        <p>If you got lost in all these matrix somersaults, go back and look at the equation for calculating the Euclidean matrix. All we did was solve this equation for several vectors simultaneously.</p>
+
+        <h2>Code</h2>
+<pre><code class="language-python">import numpy as np
+from sklearn.datasets import load_iris
+
+# Load data:
+data, _ = load_iris(return_X_y=True)
+
+def euc_matrix(A):
+    # generate distance matrix:
+    B = np.rot90(A[:,:,None],1,(1,2)) #[:,:,None] is needed to add a dimension
+    C = np.rot90(B,1,(0,1))
+    return np.sqrt(np.sum((B-C)**2, axis=2))
+
+mat = euc_matrix(data)</code></pre>
+
+        <h2>Summary</h2>
+        <p>Broadcasting is a very clean and efficient method whenever you perform the same calculation on several instances. As an exercise, I encourage you to try using broadcasting on two 3D arrays (let's say you have <em>n</em> vectors, belonging to <em>k</em> classes). This means you will need to broadcast into the 4th dimension. It is impossible to <a href="https://www.youtube.com/watch?v=N7K5KjOdLD8">imagine</a>, of course, but implementing it follows the same logic.</p>
+
+        <div class="article-end">
+          <img src="/assets/img/michael-chein-square.jpg" width="64" height="64" alt="">
+          <p>Michael Chein, data scientist. <a href="/">Home</a> · <a href="/portfolio/#posts">More posts</a></p>
+        </div>
+      </article>
+    </div>
+  </main>
+
+  <footer class="site-footer">
+    <div class="wrap">
+      <span>© 2026 Michael Chein</span>
+    </div>
+  </footer>
+</body>
+</html>

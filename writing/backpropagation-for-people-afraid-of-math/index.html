@@ -1,0 +1,214 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Backpropagation for People Who Are Afraid of Math</title>
+  <meta name="description" content="A practical, visual guide to implementing backpropagation: every layer, weight and gradient shape drawn out so your code finally fits together. By Michael Chein.">
+  <link rel="canonical" href="https://michaelchein.com/writing/backpropagation-for-people-afraid-of-math/">
+  <meta property="og:type" content="article">
+  <meta property="og:title" content="Backpropagation for people who are afraid of math">
+  <meta property="og:description" content="A practical, visual guide to implementing backpropagation.">
+  <meta property="og:url" content="https://michaelchein.com/writing/backpropagation-for-people-afraid-of-math/">
+  <meta property="og:image" content="https://michaelchein.com/writing/backpropagation-for-people-afraid-of-math/img/batch.png">
+  <meta property="article:published_time" content="2019-02-14">
+  <meta name="author" content="Michael Chein">
+  <meta name="theme-color" content="#faf8f4">
+  <link rel="icon" href="/assets/img/favicon.svg" type="image/svg+xml">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Source+Serif+4:ital,opsz,wght@0,8..60,400..600;1,8..60,400..600&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.9/katex.min.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/atom-one-light.min.css">
+  <link rel="stylesheet" href="/assets/css/site.css">
+  <script defer src="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.9/katex.min.js"></script>
+  <script defer src="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.9/contrib/auto-render.min.js"></script>
+  <script defer src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+  <script defer src="/assets/js/article.js"></script>
+</head>
+<body>
+  <a class="skip-link" href="#main">Skip to content</a>
+
+  <header class="site-header">
+    <div class="wrap">
+      <a class="brand" href="/"><span class="brand-mark" aria-hidden="true">MC</span>Michael Chein</a>
+      <nav class="site-nav" aria-label="Main">
+        <a href="/portfolio/#experience">Experience</a>
+        <a href="/portfolio/#projects">Projects</a>
+        <a href="/portfolio/#posts">Posts</a>
+      </nav>
+    </div>
+  </header>
+
+  <main id="main">
+    <div class="wrap wrap--narrow">
+      <header class="article-head">
+        <a class="back-link" href="/portfolio/#posts">← Posts</a>
+        <h1>Backpropagation for people who are afraid of math</h1>
+        <div class="article-meta"><span>Michael Chein</span><span>February 14, 2019</span><span>9 min read</span></div>
+        <p class="origin-note">Originally published in <em>Towards Data Science</em>, 2019. <a href="https://medium.com/data-science/backpropagation-for-people-who-are-afraid-of-math-936a2cbebed7">Read it on Medium</a>.</p>
+      </header>
+
+      <article class="article">
+        <p>Backpropagation is one of the most important concepts in machine learning. There are many online resources that explain the intuition behind this algorithm (IMO the best of these is the backpropagation lecture in the Stanford <a href="http://cs231n.stanford.edu/">cs231n video lectures</a>. Another very good source is <a href="https://en.wikipedia.org/wiki/Backpropagation">this</a>), but getting from the intuition to practice can be (put gently) quite challenging.</p>
+        <p>After spending more hours than I'd like to admit trying to get all the sizes of my layers and weights to fit, constantly forgetting what's what, and what's connected where, I sat down and drew some diagrams that illustrate the entire process. Consider it a visual pseudocode.</p>
+
+        <h2>The challenge: from intuition to practice</h2>
+        <p>So, assuming you have a good intuitive understanding of what the algorithm should be doing, but are having trouble getting it to work, this post is for you!</p>
+        <p>Now, to be clear, this post will NOT make any attempt to explain the intuition part. As I wrote previously, there are many good and reliable resources that do just that. This is a simple (as simple as the algorithm allows…) practical guide to help you get your code to work. In fact, your code will probably work if you follow these steps with no intuition whatsoever. Still, I highly encourage you to read a bit about the <a href="https://en.wikipedia.org/wiki/Perceptron">perceptron</a> (note, the perceptron uses a non-differentiable step activation function, so you can't really use backpropagation, but its structure and weight-updating method did form the basis for more complex neural networks). This is the bare-bones neural network, consisting of only one layer. Understanding how to update the weights of a simple network is REALLY helpful before jumping into a more complex one.</p>
+        <p>When training a network, we repeat the following steps (for <em>n</em> epochs):</p>
+        <ol>
+          <li>Perform a forward pass.</li>
+          <li>Calculate ∆W (the delta to be added to each weight) via backpropagation.</li>
+          <li>Update the weights.</li>
+        </ol>
+        <p>In this article, I am going to focus on step #2.</p>
+        <p>Ready? Let's jump in!</p>
+
+        <h2>Deciphering the equation</h2>
+        <p>The illustration below is a schematic representation of an arbitrary network. The process of backpropagation is basically the same for every step (depending on the <a href="https://medium.com/the-theory-of-everything/understanding-activation-functions-in-neural-networks-9491262884e0">activation function</a> you use), so we are only looking at the final layers. (You can regard layer L95 as the input layer, if that makes you feel more secure. It makes no difference as far as the calculation is concerned.)</p>
+        <figure class="wide">
+          <img src="img/network.png" width="2048" height="887" alt="Schematic of a network with layers L95 to L100 of 5, 2, 4, 3, 3 and 1 neurons, each node split into Z and O, connected by weights W96 to W100" loading="lazy">
+        </figure>
+        <p>As you can see, our arbitrary network has 5 neurons on layer 95, then 2 neurons on layer 96, then 4, 3, 3, and 1 neuron for the output layer (L100). All layers are connected by weights, marked (traditionally) by lines.</p>
+        <p>Notice that each node is separated into <em>Z</em> and <em>O</em>. For each node, the <em>Z</em> values are calculated by multiplying the <em>O</em> values of the previous layer with the weights connecting them to that node. <em>O</em> is obtained by applying a nonlinear activation function on <em>Z</em>. Now, below you will find the dreaded gradient calculation. Fear not! We will go over each expression.</p>
+
+        <div class="math-block">\[
+          \begin{aligned}
+          W_L &\mathrel{+}= \frac{\partial L}{\partial W_L} \\[10pt]
+          W_L &\mathrel{+}= {\color{#d0392b}\frac{\partial L}{\partial O_L}} * {\color{#2f3fa8}\frac{\partial O_L}{\partial W_L}} \\[10pt]
+          W_L &\mathrel{+}= {\color{#d0392b}\frac{\partial L}{\partial O_{L+1}} * \frac{\partial O_{L+1}}{\partial O_L}} * {\color{#2f3fa8}\frac{\partial O_L}{\partial W_L}}
+          \end{aligned}
+        \]</div>
+
+        <p>When trying to update and optimize the network's weights, we are trying to find \(\frac{\partial L}{\partial W_L}\), the derivative of the loss with regard to the weights ("how does a change to the weights affect the loss"), and, using the chain rule, divide this task into three:</p>
+        <div class="math-block">\[ {\color{#d0392b}\frac{\partial L}{\partial O_{L+1}}} \]</div>
+        <p>The derivative of the loss with regard to the next layer. This is the loss "passed upstream" from the output layer, or in other words: "how does a change to the next layer affect the loss".</p>
+        <div class="math-block">\[ {\color{#d0392b}\frac{\partial O_{L+1}}{\partial O_L}} \]</div>
+        <p>The derivative of the next layer with regard to the current layer (which can be interpreted as "how a change in the current layer affects the next layer"), which is simply the weights connecting to the next layer multiplied by the derivative of its activation function. And:</p>
+        <div class="math-block">\[ {\color{#2f3fa8}\frac{\partial O_L}{\partial W_L}} \]</div>
+        <p>("How does a change to the weights affect the current layer"), which is the previous layer's <em>O</em> values, multiplied by the current layer's activation function derivative.</p>
+        <p>To make things clearer, I've written the actual calculations, color coded to our network, for the last two layers of our network, L100 and L99.</p>
+        <figure>
+          <img src="img/last-two-layers.png" width="1781" height="1730" alt="Color-coded gradient calculations for layers L100 and L99, with the derivative term for each calculation written below it" loading="lazy">
+        </figure>
+        <p>Notice that the derivative term related to each calculation appears below it. The two derivatives associated with the loss, appearing in red, are of utmost importance, as they are used in the calculations for the previous layers. This can be seen clearly in the next diagram:</p>
+        <figure>
+          <img src="img/propagation.png" width="1811" height="1891" alt="Diagram showing how the loss derivative propagates down from layer L100 through L96, with the final two layers highlighted as a perceptron" loading="lazy">
+        </figure>
+        <p>Notice how ∂Loss <strong>propagates</strong> down the layers. Looking at this pattern, you should start seeing how this could be implemented in code. Also notice that I've highlighted the last two layers, which form the aforementioned perceptron.</p>
+        <p>Note that I didn't mention multiplying the entire expression by the learning rate (α) in this diagram, as it seemed too crowded and overshadowed the take-home message, which is the application of the chain rule. You should definitely play with different α values to get the best performance. In any case, α does appear in the next diagram.</p>
+
+        <h2>Backpropagating over a batch of instances</h2>
+        <p>An important point to notice is that each layer in the schematic representations we saw is in fact a vector, representing the computations done for a <strong>single</strong> instance. Usually we would like to input a batch of instances into the network. This will be clearer after going over the next diagram, which shows the calculation for a batch of <em>n</em> instances. Notice that this is the exact same network (5 neurons for layer L95, 2 neurons for layer L96 and so on…), only that we are now looking at <em>n</em> instances and not just one.</p>
+        <p>The most challenging part for me, when implementing backpropagation, was getting the sizes of the different layers, weights and gradient matrices to play nice. This illustration aims to set things in order.</p>
+        <figure class="wide">
+          <img src="img/batch.png" width="2048" height="2055" alt="Full diagram of the forward pass and backpropagation over a batch of n instances, listing every variable with its shape, the calculations, and the weight update" loading="lazy">
+        </figure>
+        <p>On top you will see the schematic network. The actual size of <em>n</em> makes no difference (for the calculations; obviously it does make a difference in the larger scheme of things…), for as you will notice, when we perform matrix multiplications while backpropagating, we always sum over <em>n</em>. That is to say, the length of <em>n</em> is "lost" during matrix multiplication. And this is exactly what we want: to sum over the loss from all instances in our batch.</p>
+        <p>The rest of the diagram is divided into two sections:</p>
+        <ul>
+          <li><strong>Forward pass.</strong></li>
+          <li><strong>Backpropagation.</strong></li>
+        </ul>
+        <p>The <strong>forward pass</strong> should be pretty obvious to most of you. If it's not, I would recommend reading about matrix multiplication before moving any further. One thing I will point out is the fact that each weight matrix takes a layer of size <em>(n,k)</em> and outputs a layer of size <em>(n,j)</em>. Such a weight matrix will be of size <em>(k,j)</em>.</p>
+        <p>You will probably notice that this diagram is missing the bias unit. That is because I wanted to keep it as clear as possible, and focus on how the different matrix sizes fit into the backpropagation process. There is a short section on adding the bias unit below.</p>
+        <p>The <strong>backpropagation</strong> part is a "bit" trickier… :)<br>This section of the diagram is divided into <strong>three subsections</strong>:</p>
+
+        <h3>1. Variables</h3>
+        <p>Here I list the different elements of the calculation, and most importantly, their shape. A few notes on this part:</p>
+        <ol>
+          <li><em>Z</em> refers to the layer's values before activation.</li>
+          <li><em>O</em> refers to the layer's values after activation.</li>
+          <li><em>σ</em> refers to the activation function.</li>
+          <li><em>g'</em> refers to the derivative of the activation function.</li>
+        </ol>
+        <p>Notice that this section groups the variables constituting \({\color{#d0392b}\frac{\partial O_{L+1}}{\partial O_L}}\) and \({\color{#d0392b}\frac{\partial L}{\partial O_{L+1}}}\) at the top (highlighted in red), and those constituting \({\color{#2f3fa8}\frac{\partial O_L}{\partial W_L}}\) at the bottom (highlighted in blue).</p>
+
+        <h3>2. Calculation</h3>
+        <p>This is where all the drama takes place. There is actually nothing new here. These are the exact same calculations seen in the previous diagrams, but with matrix sizes clearly written and depicted. Also, when to use element-wise multiplication and when to use matrix multiplication is clearly stated (matrix multiplication is denoted as <code>@</code>, as this is the shorthand for <code>numpy.dot</code>; you will see it in action in the code section below), as well as when you need to transpose a matrix. The diagram and following code assume a squared loss function. Its derivative is defined as <code>output - labels</code>.</p>
+
+        <h3>3. Weight update</h3>
+        <p>All that's left is to update our weights by adding ∆w to each weight matrix. Notice that we only perform the updates once we have finished backpropagating.</p>
+
+        <h2>Code</h2>
+        <p>A few notes about this section:</p>
+        <ol>
+          <li>For readability purposes, the code presented here is pseudocode.</li>
+          <li>As this post is meant to be used as a practical guide, I encourage you to go over the diagrams and try to write your <strong>own</strong> implementation <strong>before</strong> looking at the code example. The diagrams have all the information you will need to successfully build it yourself. Look at the diagrams and see how the gradient is passed from one layer to the next. Make sure you understand what is multiplied by what, and what axes are summed over. See how we obtain a ∆W matrix in the shape fitting our layer's weights in each iteration.</li>
+          <li>There are plenty of solutions online. This <a href="https://iamtrask.github.io/2015/07/12/basic-python-network/">one</a> I highly recommend, as it is very simple to understand. My own implementation was largely based on it.</li>
+          <li>The code assumes the sigmoid activation function. Because the derivative of the sigmoid function, σ(z) * (1 − σ(z)), requires only the <em>O</em> values (which are of course σ(z)), we don't need the neurons' values before activation (<em>Z</em>). For implementations using different activation functions, you will need to save the <em>Z</em> values when doing a forward pass.</li>
+        </ol>
+
+        <h3>Using a loop</h3>
+<pre><code class="language-python">def train_network(network, iterations, alpha):
+    for i in range(iterations):
+        # forward
+        for layer in network[1:]:
+            layer.nodes = activation_function((layer-1).nodes @ layer.weights)
+        # backward
+        for layer in network.reverse(): # We iterate our network in reverse order.
+            if layer is output_layer: # Calculate the loss
+                ∂_L =  network[L].nodes - labels
+            elif layer is (output_layer-1): # These are the first weights to be updated (W100 in the diagrams)
+                ∆w.append(alpha * layer-1.nodes.T @ (∂_L * activation_derivative((layer).nodes)))
+            else:
+                ∂_L = ∂_L  @ (layer+1).weights.T * activation_derivative((layer+1).nodes)
+                ∆w.append(alpha * (layer-1).nodes.T @ (∂_L * activation_derivative(layer.nodes)))
+
+    # update weights:
+        network.weights += ∆w</code></pre>
+
+        <h3>Using recursion</h3>
+<pre><code class="language-python">def backprop(current_layer=1):
+    if current_layer is output_layer:
+        ∂_L = current_layer - labels
+        current_layer.∆w = ∂_L * g'(Z(current_layer.nodes)) * (current_layer-1).nodes
+        return ∂_L
+    else:
+        ∂_L = backprop(current_layer+1)
+        ∂_L = ∂_L * g'(Z((current_layer+1).nodes)) * (current_layer+1).W
+        current_layer.∆w = ∂_L * g'(Z(current_layer.nodes)) * (current_layer-1).nodes
+        return ∂_L
+
+layers.W += layers.∆w</code></pre>
+
+        <h2>Adding a bias unit</h2>
+        <p>You may have noticed the previous diagrams were missing the bias units. I chose to leave the bias out of these diagrams because I wanted to keep them as simple and intuitive as possible, but you should definitely consider adding it!</p>
+        <p>You can add a bias "manually" for each layer, and then calculate the derivative of the loss with respect to that bias:</p>
+        <div class="math-block">\[ \Delta W_b = \frac{\partial L}{\partial W_b} = \frac{\partial L}{\partial O} * \frac{\partial O}{\partial W_b} \]</div>
+        <p>We already know how to calculate \(\frac{\partial L}{\partial O}\), and \(\frac{\partial O}{\partial W_b}\) is just the activation function derivative of the current layer.</p>
+        <p>You could also add the bias to the weight matrix. This basically just means appending a vector of bias neurons (a vector of 1's) to each layer, and initializing the weight matrices' shapes accordingly (just like you do in simple linear regression). The one thing to keep in mind, though, is that the bias units themselves should never be updated in the forward pass, as they are connected to the neurons of the <strong>next</strong> layer, but NOT to the neurons of the <strong>previous</strong> layer (see diagram).</p>
+        <figure>
+          <img src="img/bias.png" width="925" height="667" alt="Diagram of a network with a bias neuron appended to each layer, connected only to the next layer" loading="lazy">
+        </figure>
+        <p>One way you can approach this is to avoid updating these neurons, but this can get tricky, especially in the backward pass (full disclosure: this is what I did, and I don't recommend it…). A simpler solution is to do the forward and backward pass normally, but re-initialize the bias neurons to 1 after each layer update.</p>
+
+        <h2>Some useful tips</h2>
+        <ul>
+          <li>Do <strong>NOT</strong> update the weights while backpropagating!! Remember that the next iteration (the previous layer) will need these (non-updated) weights to compute the loss. You can either save the ∆w's and update the weights at the end of the backpropagation part (like I'm doing in the code examples), or constantly update the weights two layers ahead, which, in my opinion, is confusing and overly complicated.</li>
+          <li>If a layer is not activated by a nonlinear function (for example, the output layer), the gradient is just 1.</li>
+          <li>The fact that your program doesn't crash doesn't mean that it works. Make sure your network converges, and that the loss decreases.</li>
+          <li>The fact that your network converges and your loss decreases doesn't mean it's working optimally. Compare your results to other implementations. Play around with the learning rate and the structure of the network.</li>
+          <li>Try different initialization methods for the weights. This can have a <strong>huge</strong> effect on performance.</li>
+        </ul>
+
+        <h2>Summary</h2>
+        <p>Backpropagation can be a tough nut to crack, but if you wish to have a good understanding of how neural networks work, you should avoid jumping into higher-level solutions such as <a href="https://www.tensorflow.org/">TensorFlow</a> or <a href="https://pytorch.org/">PyTorch</a> before implementing a simple network yourself. This is the basis for all deep learning and is <a href="https://medium.com/@karpathy/yes-you-should-understand-backprop-e2f06eab496b">crucial</a> for successfully working with more complicated networks. It's also fun (when it works).</p>
+        <p>Good luck!</p>
+
+        <div class="article-end">
+          <img src="/assets/img/michael-chein-square.jpg" width="64" height="64" alt="">
+          <p>Michael Chein, data scientist. <a href="/">Home</a> · <a href="/portfolio/#posts">More posts</a></p>
+        </div>
+      </article>
+    </div>
+  </main>
+
+  <footer class="site-footer">
+    <div class="wrap">
+      <span>© 2026 Michael Chein</span>
+    </div>
+  </footer>
+</body>
+</html>

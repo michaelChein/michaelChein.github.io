@@ -1,0 +1,238 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Turning a Kid's Bicycle into a Keyboard</title>
+  <meta name="description" content="An Arduino Leonardo build that turns a kid's bicycle into a game controller with a Hall-effect sensor, a potentiometer and two microswitches. By Michael Chein.">
+  <link rel="canonical" href="https://michaelchein.com/writing/bicycle-keyboard/">
+  <meta property="og:type" content="article">
+  <meta property="og:title" content="Keeping your kids active during quarantine by turning their bicycle into a keyboard">
+  <meta property="og:description" content="An Arduino build that turns pedaling into keystrokes.">
+  <meta property="og:url" content="https://michaelchein.com/writing/bicycle-keyboard/">
+  <meta property="og:image" content="https://michaelchein.com/writing/bicycle-keyboard/img/plan.jpg">
+  <meta property="article:published_time" content="2020-05-04">
+  <meta name="author" content="Michael Chein">
+  <meta name="theme-color" content="#faf8f4">
+  <link rel="icon" href="/assets/img/favicon.svg" type="image/svg+xml">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Source+Serif+4:ital,opsz,wght@0,8..60,400..600;1,8..60,400..600&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/atom-one-light.min.css">
+  <link rel="stylesheet" href="/assets/css/site.css">
+  <script defer src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+  <script defer src="/assets/js/article.js"></script>
+</head>
+<body>
+  <a class="skip-link" href="#main">Skip to content</a>
+
+  <header class="site-header">
+    <div class="wrap">
+      <a class="brand" href="/"><span class="brand-mark" aria-hidden="true">MC</span>Michael Chein</a>
+      <nav class="site-nav" aria-label="Main">
+        <a href="/portfolio/#experience">Experience</a>
+        <a href="/portfolio/#projects">Projects</a>
+        <a href="/portfolio/#posts">Posts</a>
+      </nav>
+    </div>
+  </header>
+
+  <main id="main">
+    <div class="wrap wrap--narrow">
+      <header class="article-head">
+        <a class="back-link" href="/portfolio/#posts">← Posts</a>
+        <h1>Keeping your kids active during quarantine by turning their bicycle into a keyboard</h1>
+        <p class="standfirst">In this short tutorial, I'll walk you through the process of turning any bicycle into an arcade-like controller for computer games.</p>
+        <div class="article-meta"><span>Michael Chein</span><span>May 4, 2020</span><span>8 min read</span></div>
+        <p class="origin-note">Originally published in <em>Towards Data Science</em>, 2020. <a href="https://medium.com/data-science/keeping-your-kids-in-shape-during-quarantine-by-turning-their-bicycle-into-a-keyboard-e1f8a34fac2e">Read it on Medium</a>.</p>
+      </header>
+
+      <article class="article">
+        <p>Despite not setting the <em>best</em> example for leading a healthy lifestyle, my wife and I do try to eat our greens, avoid too much junk, and keep in shape. Our 5-year-old, on the other hand, couldn't care less about doing any physical activity, unless it gets him closer to his (my…) iPad.</p>
+        <p>Normally, this issue is partially remedied simply by being a kid, which involves a fair amount of running, climbing, falling… and recently cycling! But unfortunately, with the advent of the COVID-19 pandemic, we can't really do any of that.</p>
+        <p>So, I turned his bicycle into a keyboard.</p>
+        <p>Now, he can play his favourite computer games and exercise at the same time! In this short article, I'll walk you through the process of building your very own <em>keyboard bike</em>.</p>
+
+        <h2>Foundations</h2>
+        <p>The first step is turning the bicycle into an indoor training bike by getting the rear wheel to spin freely without touching the ground, and allowing the handlebars to turn freely as well. If your kid is propelled forward, you should NOT proceed to the following steps.</p>
+        <p>There are many ways of getting the bike to remain in place while spinning the pedals: hanging the bicycle from the ceiling, digging a hole in the floor beneath the wheel and many more. I personally used the training wheels to support the rear, but this is your place to get creative, and more importantly, <strong>be responsible</strong>. I am deliberately avoiding getting into too much detail about my implementation of this part (you can get a pretty good idea from the various pictures and GIFs in this article…) as it is your responsibility to make sure that the bicycle is secure and safe to use.</p>
+
+        <h2>The plan</h2>
+        <figure class="wide">
+          <img src="img/plan.jpg" width="1600" height="715" alt="Blueprint-style drawing of a kid's bicycle with a Hall-effect sensor on the rear wheel, a potentiometer at the handlebar pivot and switches on the handlebars, all wired to an Arduino connected to a computer" loading="lazy">
+        </figure>
+        <p>After securing the bike so that it can be pedalled in place, we will connect sensors to capture the rotation of the rear wheel, the position of the handlebars, and some buttons for extra control (these can easily be programmed later to map to any keyboard key). Data from all sensors will be captured and transformed by an Arduino that will function as a keyboard and send keystrokes to a computer running a (most likely racing) game.</p>
+
+        <h2>Hardware</h2>
+        <p>We must use a board that can function as a USB keyboard. I used an <a href="https://store.arduino.cc/arduino-leonardo-with-headers">Arduino Leonardo</a>.</p>
+        <p>I used 3 types of sensors:</p>
+        <ol>
+          <li><a href="https://www.allegromicro.com/en/products/discontinued-product-archive/a1301-2"><strong>A1302 Hall effect sensor</strong></a>: this sensor changes its output voltage when in the proximity of a magnetic field. We will use it to transform the rotation of the rear wheel into a forward key press.</li>
+          <li><a href="https://www.sparkfun.com/products/9939"><strong>10K ohm linear potentiometer</strong></a>: used to transform the handlebar orientation into left/right keys.</li>
+          <li><a href="https://www.sparkfun.com/products/13013"><strong>Microswitch</strong></a>: used as extra controllers. I <strong>highly</strong> recommend using this type of switch (a limit switch) rather than going for fancy buttons. These switches are very responsive, whereas buttons can sometimes be challenging for a kid to press.</li>
+        </ol>
+
+        <h2>Connecting the parts</h2>
+        <h3>Hall effect sensor</h3>
+        <p>By placing magnets on the rear wheel, and positioning the sensor close by (as close as possible without touching the wheel), we can sense the wheel's rotation as the magnets pass by the sensor. I used two magnets, equally spaced (that is, ~180 degrees apart).</p>
+        <figure class="small no-bg">
+          <video src="img/hall-sensor.mp4" poster="img/hall-sensor.jpg" width="388" height="486" autoplay muted loop playsinline aria-label="The rear wheel spinning past the Hall-effect sensor, with plastic-wrapped magnets tied to the spokes"></video>
+        </figure>
+        <p><strong>A tip for attaching the magnets:</strong> you could probably find a more elegant solution, but the one I used here is to wrap the magnets in plastic wrap and twist the ends, like a candy wrapper (I am referring to the white blobs seen spinning with the wheel above). Then use the loose ends to tie the magnets to the wheel's spokes, and secure with hot glue.</p>
+        <p>In order to get the sensor (this is the red vertical rod above; the sensor itself is located at its end) as close to the wheel as possible, I mounted it on a flexible wire (I used some heavy-duty electrical wire, but any wire that will flex and keep its position will do).</p>
+
+        <h3>Potentiometer</h3>
+        <p>The potentiometer needs to be connected to the pivot point of the handlebars. There should be a socket for an Allen wrench at that point. I used a fitting driver bit and connected it to the potentiometer. Originally, my plan was to solder both parts together, but driver bits have low (no) solderability. I ended up taking a short piece of straw (seen below in violet), sticking the potentiometer and driver bit in from both sides, and injecting it with hot glue to keep everything together. It's solid as a rock.</p>
+        <figure class="small no-bg">
+          <video src="img/potentiometer.mp4" poster="img/potentiometer.jpg" width="414" height="442" autoplay muted loop playsinline aria-label="The potentiometer, joined to a driver bit with a violet straw and hot glue, turning in the handlebar pivot socket"></video>
+        </figure>
+        <p>As for securing the potentiometer to the bike frame, you will again need to get creative. My solution (which can be seen in the image at the end of the article showing all components detached from the bike) was based on making a plexiglass "arm" to hold the potentiometer in place, and may not work for your child's bike. The idea is simple: the potentiometer needs to spin with the handlebars. Simple as it is, the implementation can be quite challenging…</p>
+
+        <h3>Switches</h3>
+        <p>I placed one of the switches behind the (redundant) front-wheel brake lever, and the other one behind the not-redundant back-wheel brake lever, and disconnected this brake, so that the switches are pressed by pressing the brakes, which feels very natural.</p>
+        <figure class="small no-bg">
+          <video src="img/switch.mp4" poster="img/switch.jpg" width="368" height="398" autoplay muted loop playsinline aria-label="A finger pressing the brake lever, which clicks a microswitch mounted behind it"></video>
+        </figure>
+        <p>Again, I'm not taking any responsibility here. If you feel the supports you made in part 1 are not strong enough and are worried about obstructing and/or disconnecting brakes, you can, and should, place the buttons somewhere else. There's no right or wrong, as long as it's comfortable and safe. I limited myself to two buttons, but you can obviously go as high as the board allows.</p>
+
+        <h2>Wiring</h2>
+        <figure class="wide">
+          <img src="img/wiring.png" width="1689" height="921" alt="Fritzing breadboard diagram wiring an Arduino Leonardo to an A1302 Hall-effect sensor, a potentiometer and two D2F-FL microswitches with pull-down resistors" loading="lazy">
+        </figure>
+
+        <h2>A note on thinking ahead</h2>
+        <p>After completing <em>keyboard-bike version 1.0</em>, I set out to improve it by making sure I could easily disconnect all components and reassemble them again as quickly as possible. This required some tweaking that could have been avoided if I had thought of it from the get-go. It took me nearly <em>2 hours</em> to upgrade to <em>keyboard-bike version 2.0</em>, but it now takes <em>less than a minute</em> to assemble or disassemble.</p>
+        <figure class="wide">
+          <img src="img/components.jpg" width="1600" height="980" alt="All keyboard-bike components detached and laid out on a rug, with the switches, potentiometer and Hall-effect sensor labeled" loading="lazy">
+        </figure>
+        <p>Another point to keep in mind is the best place to secure the board. I thoughtlessly put it on the side my son gets on and off the bike. In retrospect, I should have chosen the other side…</p>
+
+        <h2>Code</h2>
+        <p>As explained in the hardware section, the <em>keyboard bike</em> setup is composed of 3 types of sensors: a Hall effect sensor, a potentiometer, and buttons. I'll explain the code for each component separately.</p>
+        <h3>Hall effect sensor</h3>
+        <p>The Hall effect sensor is "activated" when the wheel spins and the magnets pass by the sensor, inducing a change in output voltage. For this part, I switched on the key (the forward key in my case) whenever there was an absolute change in voltage above a certain threshold (<code>hall_effect_threshold</code>). I then keep it on and start counting back for a certain amount of time (<code>drive_decay_const</code>). This allows tuning the amount of motion you get from each "spike". Increase the value of <code>drive_decay_const</code> to get more movement.</p>
+        <h3>Potentiometer</h3>
+        <p>Here we're basically trying to convert an "analog" motion of turning the handlebars into "binary" left or right clicks. A continuous press is way too dramatic if you just want to make small adjustments, so the amount of turn needs to be represented as a "click amount". I'm doing this by activating and deactivating the turning movement at a set interval (<code>interval</code>), so that turning the handlebars beyond a certain threshold will start pressing intermittently. In addition, I add a delay while the button is activated that grows with the amount of turn. So for higher-angle turns, the button will be pressed for a longer duration (that is, each click will be longer), resulting in a more aggressive turn. Also, notice that I'm initialising <code>pot_center</code> at setup. This is helpful for cases where the potentiometer gets disconnected from the socket. Instead of having to relocate the center, you can just reset the board, and the center will be reset.</p>
+        <h3>Switches</h3>
+        <p>Nothing special here. Just replace the activated key to suit your needs. The code here is for playing <a href="https://supertuxkart.net/Main_Page">SuperTuxKart</a>, which is a great racing game for kids, but the bike could obviously be adjusted for many other games. We also use it to play Minecraft, which works great.</p>
+
+<pre><code class="language-cpp">/*
+bicycle_keyboard
+*/
+
+#include "Keyboard.h"
+
+const int hall_effect_threshold = 1;     // threshold for hall effect sensor.
+const int turn_threshold = 35;           // threshold for detecting a left/right movement.
+const int drive_decay_const = 100;       // drive_decay speed of car (larger => slower decreasing / faster car)
+const int turn_decay_const = 0.75;       // multiplier for intensity of turn. higher value => sharper turns.
+const char button_1_val = ' ';           // value for button 1
+const char button_2_val = 'n';           // value for button 2
+const long interval = 200;               // interval for allowing not allowing turns.
+const int button_1 = 2;                  // button_1 pin
+const int button_2 = 3;                  // button_2 pin
+int pot_center = 500;                    // center point for potentiometer. this value is being reset in setup.
+int prev_hallSensorValue = 0;            // initial value for sensor
+const int delay_time = 1;                // delay between reads
+int drive_decay = 0;                     // initial drive_decay value
+unsigned long previousMillis = 0;        // initial value
+bool allow_turn = true;                  // allow turn is a boolean to only allow turns every passing interval
+int turn_amount = 0;                     // initial value
+
+void setup() {
+  Serial.begin(9600);
+  Keyboard.begin();
+  pinMode(button_1, INPUT);
+  pinMode(button_2, INPUT);
+  pot_center = analogRead(A1);
+}
+
+void loop() {
+  unsigned long currentMillis = millis();
+  int hallSensorValue = analogRead(A0);
+  int pot = analogRead(A1);
+
+//  Serial.println(hallSensorValue);
+//  Serial.println(pot);
+
+  delay(delay_time);        // delay in between reads for stability
+
+  // DRIVE:
+  if (abs(hallSensorValue- prev_hallSensorValue) >1){
+    prev_hallSensorValue = hallSensorValue;
+    Keyboard.press(KEY_UP_ARROW);
+    drive_decay = drive_decay_const;
+  }
+  else{
+    if (drive_decay <= 0){
+        Keyboard.release(KEY_UP_ARROW);
+        }
+    else{
+      drive_decay -=1;
+      }
+    }
+
+if (allow_turn==true){
+
+//TURN RIGHT
+  if (pot < pot_center - turn_threshold) {
+    Keyboard.press(KEY_RIGHT_ARROW);
+    }
+// TURN LEFT
+  if (pot > pot_center + turn_threshold){
+    Keyboard.press(KEY_LEFT_ARROW);
+  }
+}
+
+    if (currentMillis - previousMillis >= interval) { // interval has passed
+    previousMillis = currentMillis;
+    turn_amount = abs(pot-pot_center);
+
+    // switch allow turn state:
+    if (allow_turn == true) {
+      if (turn_amount > turn_threshold){
+          delay(turn_amount); //keep button pressed longer the more aggressive the turn.
+        }
+      allow_turn = false;
+    } else {
+      allow_turn = true;
+      }
+     // release the turn keys:
+      Keyboard.release(KEY_RIGHT_ARROW);
+      Keyboard.release(KEY_LEFT_ARROW);
+    }
+
+  //check buttons
+  if (digitalRead(button_1) == HIGH){
+    Keyboard.press(button_1_val);
+    }
+   else{
+     Keyboard.release(button_1_val);
+    }
+
+  if (digitalRead(button_2) == HIGH){
+    Keyboard.press(button_2_val);
+    }
+   else{
+     Keyboard.release(button_2_val);
+    }
+}</code></pre>
+
+        <h2>Summary</h2>
+        <p>To conclude, I hope I did a good job of explaining how to build the <em>keyboard bike</em>. If you choose to build one and find that I haven't, don't hesitate to <a href="mailto:michaelchein@gmail.com">send me a message</a>.</p>
+
+        <div class="article-end">
+          <img src="/assets/img/michael-chein-square.jpg" width="64" height="64" alt="">
+          <p>Michael Chein, data scientist. <a href="/">Home</a> · <a href="/portfolio/#posts">More posts</a></p>
+        </div>
+      </article>
+    </div>
+  </main>
+
+  <footer class="site-footer">
+    <div class="wrap">
+      <span>© 2026 Michael Chein</span>
+    </div>
+  </footer>
+</body>
+</html>
